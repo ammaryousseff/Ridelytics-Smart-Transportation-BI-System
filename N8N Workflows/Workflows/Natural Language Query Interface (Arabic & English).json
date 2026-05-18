@@ -1,0 +1,344 @@
+{
+  "name": "Natural Language Query Interface (Arabic & English)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ridelytics-nlq",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "d7924db3-a01c-4d04-bf06-c4f8be19c2b8",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        -32
+      ],
+      "webhookId": "ridelytics-nlq-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE: Input Cleaner & Language Detector\n// ============================================================\nconst body = $input.first().json.body || $input.first().json;\nconst rawQuestion = (body.message || body.question || '').trim();\n\nif (!rawQuestion) {\n  throw new Error('Missing \"question\" field in request body.');\n}\n\nif (rawQuestion.length > 1000) {\n  throw new Error('Question too long. Maximum 1000 characters.');\n}\n\n// Detect language\nconst arabicPattern = /[\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF]/;\nconst isArabic = arabicPattern.test(rawQuestion);\nconst detectedLang = isArabic ? 'ar' : 'en';\n\n// Clean the question: strip HTML tags, normalize whitespace\nconst cleanQuestion = rawQuestion\n  .replace(/<[^>]+>/g, '')\n  .replace(/[<>\"';]/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\n// Execution tracking\nconst startTime = Date.now();\n\nreturn [{\n  json: {\n    originalQuestion: rawQuestion,\n    cleanQuestion,\n    detectedLang,\n    isArabic,\n    startTime,\n    requestId: `NLQ-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`\n  }\n}];"
+      },
+      "id": "d8893fbd-691a-4475-9353-e7b789883ed9",
+      "name": "Input Cleaner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE: SQL Validator & Sanitizer\n// Cleans AI output, blocks dangerous SQL, enforces SELECT-only\n// ============================================================\nconst rawSql =\n  $input.first().json.message?.content ||\n  $input.first().json.text ||\n  $input.first().json.output ||\n  '';\n\n// --- Step 1: Strip markdown fences ---\nlet sql = rawSql\n  .replace(/```sql\\s*/gi, '')\n  .replace(/```\\s*/g, '')\n  .replace(/^sql\\s*/i, '')\n  .trim();\n\n// --- Step 2: Extract chart type hint from first line comment ---\nconst chartMatch = sql.match(/^--\\s*chart:(\\w+)/i);\nconst suggestedChart = chartMatch ? chartMatch[1].toLowerCase() : 'table';\n\n// Remove the chart hint line from SQL for cleanliness\nsql = sql.replace(/^--\\s*chart:\\w+\\s*\\n?/i, '').trim();\n\n// --- Step 3: Block dangerous keywords (case-insensitive, word boundaries) ---\nconst BLOCKED = [\n  'DELETE', 'DROP', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE',\n  'EXEC', 'EXECUTE', 'xp_', 'sp_', 'OPENROWSET', 'BULK INSERT',\n  'SHUTDOWN', 'RESTORE', 'BACKUP', 'GRANT', 'REVOKE', 'DENY',\n  'CREATE', 'INTO', 'MERGE', 'CALL'\n];\n\nconst sqlUpper = sql.toUpperCase();\nconst blocked = BLOCKED.filter((kw) => {\n  const pattern = new RegExp(`\\\\b${kw.replace('_', '\\\\s*')}\\\\b`, 'i');\n  return pattern.test(sqlUpper);\n});\n\nif (blocked.length > 0) {\n  return [{\n    json: {\n      valid: false,\n      reason: `Blocked keywords detected: ${blocked.join(', ')}`,\n      sql: null,\n      suggestedChart: 'table',\n    },\n  }];\n}\n\n// --- Step 4: Must start with SELECT (after removing comments) ---\nconst sqlNoComments = sql.replace(/--[^\\n]*/g, '').trim();\nconst firstToken = sqlNoComments.match(/^\\S+/);\nif (!firstToken || firstToken[0].toUpperCase() !== 'SELECT') {\n  return [{\n    json: {\n      valid: false,\n      reason: 'Query must begin with SELECT',\n      sql: null,\n      suggestedChart: 'table',\n    },\n  }];\n}\n\n// --- Step 5: Add TOP 100 if no TOP / no ROW_NUMBER pagination ---\nif (!/\\bTOP\\s+\\d+\\b/i.test(sql) && !/ROW_NUMBER\\s*\\(/i.test(sql)) {\n  sql = sql.replace(/^SELECT\\s+/i, 'SELECT TOP 100 ');\n}\n\n// --- Step 6: Validate SQL length ---\nif (sql.length > 5000) {\n  return [{\n    json: {\n      valid: false,\n      reason: 'Generated SQL exceeds maximum allowed length',\n      sql: null,\n      suggestedChart: 'table',\n    },\n  }];\n}\n\n// --- Step 7: Validate it references at least one known table ---\nconst KNOWN_TABLES = [\n  'Fact_Trip', 'Fact_DriverEarnings', 'Fact_Complaint', 'Fact_Rating',\n  'Dim_Date', 'Dim_Time', 'Dim_Zone', 'Dim_Rider', 'Dim_Driver',\n  'Dim_Payment', 'Dim_Promotion', 'Dim_SeasonalPattern', 'Dim_SurgeRule',\n];\nconst referencesKnownTable = KNOWN_TABLES.some((t) =>\n  new RegExp(`\\\\b${t}\\\\b`, 'i').test(sql)\n);\n\nif (!referencesKnownTable) {\n  return [{\n    json: {\n      valid: false,\n      reason: 'Query does not reference any known Ridelytics DWH table',\n      sql: null,\n      suggestedChart: 'table',\n    },\n  }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    reason: 'OK',\n    sql: sql.trim(),\n    suggestedChart,\n  },\n}];"
+      },
+      "id": "83d4738d-e3df-4db1-9dd3-49981778aa89",
+      "name": "SQL Validator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond_valid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "86959534-b396-4c1c-816e-a00fe6284b1f",
+      "name": "IF: SQL Safe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $('SQL Validator').first().json.sql }}",
+        "options": {}
+      },
+      "id": "780e67ab-f382-4e44-b152-d8e403cd68cf",
+      "name": "Execute SQL Query",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -144
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTGbsKTb07lvplX0",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE: Result Formatter\n// Builds final response with chart type, data, and metadata\n// ============================================================\nconst rows = $input.all().map(item => item.json);\nconst validatorData = $('SQL Validator').first().json;\nconst inputData = $('Input Cleaner').first().json;\nconst startTime = inputData.startTime;\nconst executionTimeMs = Date.now() - startTime;\n\n// Determine column names from first row\nconst columns = rows.length > 0 ? Object.keys(rows[0]) : [];\n\n// ---- Chart type refinement based on column patterns ----\nlet chartType = validatorData.suggestedChart || 'table';\n\nif (rows.length === 1 && columns.length === 1) {\n  chartType = 'kpi';\n} else if (columns.some(c => /date|month|week|year|day/i.test(c)) && rows.length > 2) {\n  chartType = 'line';\n} else if (columns.some(c => /percent|ratio|share|proportion/i.test(c))) {\n  chartType = 'pie';\n} else if (columns.some(c => /zone|governorate|city|region/i.test(c))) {\n  chartType = 'map';\n} else if (rows.length <= 10 && chartType !== 'kpi') {\n  chartType = 'bar';\n}\n\n// ---- Generate human-readable query explanation ----\nconst lang = inputData.detectedLang;\nlet explanation;\nif (lang === 'ar') {\n  explanation = `تم تنفيذ الاستعلام بنجاح. النتيجة تحتوي على ${rows.length} صف و${columns.length} عمود. وقت التنفيذ: ${executionTimeMs}ms.`;\n} else {\n  explanation = `Query executed successfully. Returned ${rows.length} row(s) across ${columns.length} column(s). Execution time: ${executionTimeMs}ms.`;\n}\n\n// ---- Log entry (would be saved to a log table in production) ----\nconst logEntry = {\n  requestId: inputData.requestId,\n  question: inputData.cleanQuestion,\n  language: inputData.detectedLang,\n  sql: validatorData.sql,\n  rowCount: rows.length,\n  executionTimeMs,\n  chartType,\n  timestamp: new Date().toISOString()\n};\n\nreturn [{\n  json: {\n    success: true,\n    requestId: inputData.requestId,\n    question: inputData.cleanQuestion,\n    language: inputData.detectedLang,\n    sql: validatorData.sql,\n    chartType,\n    columns,\n    rowCount: rows.length,\n    data: rows,\n    explanation,\n    executionTimeMs,\n    log: logEntry\n  }\n}];"
+      },
+      "id": "5cd5e8d3-5ad5-4733-9a62-c6d7930ddb4a",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Request-Id",
+                "value": "={{ $json.requestId }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "1728e15f-ffb0-4de6-8516-a2bd7d6cd5ed",
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE: Error Response Builder\n// Handles both validation failures and SQL execution errors\n// ============================================================\nconst inputData = $('Input Cleaner').first().json;\nconst validatorData = $('SQL Validator').first().json;\nconst lang = inputData.detectedLang || 'en';\n\nconst errorReason = validatorData.reason || 'Unknown validation error';\n\nlet userMessage;\nif (lang === 'ar') {\n  const msgMap = {\n    'Blocked keywords detected': 'عذراً، لا يمكن تنفيذ عمليات التعديل على قاعدة البيانات. يُسمح فقط بالاستعلام.',\n    'Query must begin with SELECT': 'حدث خطأ في توليد الاستعلام. حاول إعادة صياغة سؤالك.',\n    'Query does not reference': 'لم أتمكن من ربط سؤالك بجداول قاعدة بيانات Ridelytics. حاول أن تكون أكثر تحديداً.',\n    'DEFAULT': 'حدث خطأ أثناء معالجة سؤالك. يرجى المحاولة مرة أخرى أو إعادة الصياغة.'\n  };\n  const key = Object.keys(msgMap).find(k => errorReason.includes(k)) || 'DEFAULT';\n  userMessage = msgMap[key];\n} else {\n  userMessage = `Unable to process your query: ${errorReason}. Please rephrase your question.`;\n}\n\nreturn [{\n  json: {\n    success: false,\n    requestId: inputData.requestId,\n    question: inputData.cleanQuestion,\n    language: lang,\n    error: errorReason,\n    userMessage,\n    sql: null,\n    data: [],\n    chartType: null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "4c9d3905-4f2f-4c89-aee4-c76968584a2d",
+      "name": "Build Error Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "1476815e-17b3-442e-8d38-c7905eba76aa",
+      "name": "Respond — Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        432,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "model": "mistral-medium",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        144
+      ],
+      "id": "4fa7b5b0-8440-4d58-9062-7e3e51aa9c0b",
+      "name": "Mistral Cloud Chat Model",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "FSSs494STZ93JXsC",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Input Cleaner').first().json.cleanQuestion }}",
+        "options": {
+          "systemMessage": "You are an expert SQL Server Data Warehouse analyst for Ridelytics — an Egyptian ride-hailing analytics platform.\n\nYou understand both Arabic (عربي) and English questions and must always respond with ONLY a valid SQL Server SELECT query. No explanations, no markdown, no code blocks. Pure SQL only.\n\n=== DATABASE: RidelyticsDWH ===\n\n--- Dim_Date (DateKey INT PK — YYYYMMDD format) ---\nDateKey, FullDate, Year, Quarter, Month, MonthName, Week, DayOfWeek, DayName, IsWeekend (BIT), IsRamadan (BIT), SeasonLabel (VARCHAR)\n\n--- Dim_Time (TimeKey INT PK — HHMMSS format) ---\nTimeKey, FullTime, Hour (0-23), Minute, Second, AmPm, HourLabel, Period (Morning/Afternoon/Evening/Night), IsRushHour (BIT), ShiftLabel (Morning Shift/Evening Shift/Night Shift)\n\n--- Dim_Zone ---\nZoneKey (PK IDENTITY), ZoneID, ZoneName, Region, Governorate, City, Latitude, Longitude\n\n--- Dim_Rider ---\nRiderKey (PK IDENTITY), RiderID, FirstName, LastName, Email, PhoneNumber, Gender, DateOfBirth, RegistrationDate, Status, AverageRating, LastTripDate, HomeZoneID, Age\n\n--- Dim_Driver (includes vehicle attributes) ---\nDriverKey (PK IDENTITY), DriverID, FirstName, LastName, PhoneNumber, NationalID, DateOfBirth, Gender, LicenseNumber, LicenseExpiryDate, CancellationRate, AverageRating, Status, IsOnline (BIT), JoinDate, JoinYear, LastOnlineTime, BankAccountNumber, HomeZoneID, Age,\nVehicleID, LicensePlate, TypeName, ModelYear, Model, Manufacturer, Color, SeatingCapacity, Mileage, IsActive (BIT), NextInspectionDate, LastInspectionDate, InspectionStatus, InsuranceExpiryDate, BaseFarePerKm\n\n--- Dim_Payment ---\nPaymentKey (PK IDENTITY), PaymentID, MethodName, Amount, Status\n\n--- Dim_Promotion ---\nPromoKey (PK IDENTITY), PromoID, PromoCode, DiscountType, DiscountValue, StartDate, EndDate, Status\n\n--- Dim_SeasonalPattern ---\nSeasonKey (PK IDENTITY), SeasonID, SeasonType, SeasonStartDate, SeasonEndDate, SeasonalSurgeMultiplier\n\n--- Dim_SurgeRule ---\nSurgeRuleKey (PK IDENTITY), SurgeRuleID, RuleName, DayType, StartHour, EndHour, TimeSurgeMultiplier\n\n--- Fact_Trip (main fact table) ---\nTripKey (PK IDENTITY), TripID, RequestDateKey → Dim_Date.DateKey, RequestTimeKey → Dim_Time.TimeKey, AcceptanceTimeKey → Dim_Time.TimeKey (nullable), PickupTimeKey → Dim_Time.TimeKey (nullable), DropOffTimeKey → Dim_Time.TimeKey (nullable),\nRiderKey → Dim_Rider.RiderKey, DriverKey → Dim_Driver.DriverKey (nullable), PickupZoneKey → Dim_Zone.ZoneKey, DropOffZoneKey → Dim_Zone.ZoneKey,\nPaymentKey → Dim_Payment.PaymentKey (nullable), PromoKey → Dim_Promotion.PromoKey (nullable), SeasonKey → Dim_SeasonalPattern.SeasonKey (nullable), SurgeRuleKey → Dim_SurgeRule.SurgeRuleKey (nullable),\nTripStatus (VARCHAR), IsCancelled (BIT), WaitTimeMinutes (INT), PickupWaitMinutes (INT), DurationMinutes (INT), DistanceKM (DECIMAL), BaseFare (DECIMAL), SeasonalSurgeMultiplier (DECIMAL), TimeSurgeMultiplier (DECIMAL), DiscountPercentage (DECIMAL), FinalFare (DECIMAL), CancellationReason (VARCHAR), CancelledBy (VARCHAR)\n\n--- Fact_DriverEarnings ---\nEarningsKey (PK IDENTITY), EarningsID, DateKey → Dim_Date.DateKey, DriverKey → Dim_Driver.DriverKey, TripID (links to Fact_Trip.TripID), GrossEarning, PlatformCommission, BonusAmount, NetEarning\n\n--- Fact_Complaint ---\nComplaintKey (PK IDENTITY), ComplaintID, FilingDateKey → Dim_Date.DateKey, ResolutionDateKey → Dim_Date.DateKey (nullable), TripID, RiderKey → Dim_Rider.RiderKey, DriverKey → Dim_Driver.DriverKey (nullable), ComplaintCategory, SeverityLevel, Status, DaysToResolve (INT), Description, ResolutionNotes\n\n--- Fact_Rating ---\nRatingKey (PK IDENTITY), RatingID, RatingDateKey → Dim_Date.DateKey, TripID, RiderKey → Dim_Rider.RiderKey, DriverKey → Dim_Driver.DriverKey, RatedBy (Driver/Rider), RatingValue, Comment\n\n=== ARABIC TERM MAPPING ===\nرحلات / رحلة = trips (Fact_Trip)\nسائق / سائقين = driver(s) (Dim_Driver)\nراكب / ركاب = rider(s) (Dim_Rider)\nأرباح / إيرادات = earnings/revenue (Fact_DriverEarnings.NetEarning / Fact_Trip.FinalFare)\nشكاوى / شكوى = complaints (Fact_Complaint)\nتقييم / تقييمات = rating(s) (Fact_Rating)\nالشهر ده / هذا الشهر = current month (MONTH(GETDATE()), YEAR(GETDATE()))\nإمبارح / أمس = yesterday\nالنهارده / اليوم = today\nأعلى / أكثر = top/most\nأقل / أدنى = bottom/least\nالمنطقة / منطقة = zone (Dim_Zone)\nمحافظة = governorate\nالدفع = payment (Dim_Payment)\nتسريح / إلغاء = cancellation\nوقت الانتظار = wait time\nمسافة = distance\nتعريفة / أجرة = fare\n\n=== SQL SERVER RULES ===\n1. ALWAYS use TOP N (not LIMIT) for row limiting.\n2. Date filtering: use Dim_Date with DateKey comparisons — e.g., RequestDateKey IN (SELECT DateKey FROM Dim_Date WHERE Year = YEAR(GETDATE()) AND Month = MONTH(GETDATE())).\n3. For \"this month\" questions, join Fact_Trip with Dim_Date on RequestDateKey and filter Year+Month.\n4. Zone joins: always alias pickup/dropoff zone separately — e.g., JOIN Dim_Zone pz ON ft.PickupZoneKey = pz.ZoneKey.\n5. Use ISNULL() not COALESCE() when comparing single values.\n6. String concatenation: use + operator.\n7. For driver full name: dd.FirstName + ' ' + dd.LastName AS DriverName.\n8. For date arithmetic: use DATEDIFF().\n9. NEVER generate: DELETE, DROP, UPDATE, INSERT, ALTER, TRUNCATE, EXEC, EXECUTE, xp_, sp_, OPENROWSET, BULK.\n10. All queries must start with SELECT.\n11. Include WITH (NOLOCK) hint on large fact tables for read performance.\n12. Use meaningful column aliases in English.\n\n=== CHART TYPE HINTS (add as SQL comment on line 1) ===\nFor ranking/top-N questions → -- chart:bar\nFor time-series/trend questions → -- chart:line\nFor distribution/proportion questions → -- chart:pie\nFor comparison matrices → -- chart:table\nFor single KPI → -- chart:kpi\nFor geographic questions → -- chart:map\n\n=== BUSINESS QUERY PATTERNS ===\n- Revenue queries: SUM(ft.FinalFare) FROM Fact_Trip ft WHERE ft.IsCancelled = 0\n- Driver performance: AVG(fr.RatingValue), COUNT(ft.TripKey), SUM(fde.NetEarning)\n- Cancellation rate: SUM(CAST(ft.IsCancelled AS INT)) * 100.0 / COUNT(ft.TripKey)\n- Rush hour analysis: JOIN Dim_Time dt ON ft.RequestTimeKey = dt.TimeKey WHERE dt.IsRushHour = 1\n- Surge pricing: WHERE ft.TimeSurgeMultiplier > 1 OR ft.SeasonalSurgeMultiplier > 1\n\nReturn ONLY the SQL query. No markdown fences, no explanation, no preamble."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -800,
+        -32
+      ],
+      "id": "2ba690f3-ca41-4cf0-ac74-5f9e1d38f74d",
+      "name": "AI Agent - SQL Generator"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Input Cleaner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Cleaner": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - SQL Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SQL Validator": {
+      "main": [
+        [
+          {
+            "node": "IF: SQL Safe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: SQL Safe?": {
+      "main": [
+        [
+          {
+            "node": "Execute SQL Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute SQL Query": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Respond — Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Response": {
+      "main": [
+        [
+          {
+            "node": "Respond — Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - SQL Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - SQL Generator": {
+      "main": [
+        [
+          {
+            "node": "SQL Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1c1e4bc2-ce58-40b3-968d-f5787237acaa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "238b270db563e0aaca00e1be599cc2a778eaaa904d9aab2d8161b614c418a3f4"
+  },
+  "id": "CLfBAXQhPW969B7l",
+  "tags": []
+}

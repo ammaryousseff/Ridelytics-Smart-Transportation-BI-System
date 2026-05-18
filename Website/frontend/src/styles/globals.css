@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-brand-soft-white text-brand-dark-navy antialiased selection:bg-brand-cyan/30;
+  }
+}
+
+@layer components {
+  /* Light Glassmorphism Classes */
+  .glass-panel {
+    @apply bg-white/60 backdrop-blur-xl border border-white/80 shadow-glass rounded-2xl;
+  }
+  
+  .glass-panel-dark {
+    @apply bg-white/80 backdrop-blur-xl border border-brand-teal/10 shadow-glass-lg rounded-2xl;
+  }
+
+  /* Cinematic Gradients & Effects for Light Theme */
+  .cinematic-bg {
+    @apply bg-gradient-to-br from-brand-soft-white via-white to-brand-light bg-[length:200%_200%] animate-liquid-flow;
+  }
+
+  .text-glow {
+    text-shadow: 0 4px 12px rgba(10, 124, 140, 0.15);
+  }
+
+  /* Core UI Elements */
+  .btn-primary {
+    @apply relative overflow-hidden bg-brand-teal text-white font-medium rounded-xl px-6 py-3 
+           transition-all duration-300 hover:shadow-glow-teal hover:-translate-y-0.5 
+           active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary::after {
+    content: '';
+    @apply absolute inset-0 bg-white/20 translate-y-full transition-transform duration-300;
+  }
+  .btn-primary:hover::after {
+    @apply translate-y-0;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-xl text-brand-slate font-medium transition-colors hover:bg-brand-light hover:text-brand-dark-navy;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border;
+  }
+  .badge-success { @apply bg-semantic-positive/10 text-semantic-positive border-semantic-positive/20; }
+  .badge-warning { @apply bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20; }
+  .badge-danger { @apply bg-semantic-negative/10 text-semantic-negative border-semantic-negative/20; }
+  .badge-info { @apply bg-semantic-info/10 text-semantic-info border-semantic-info/20; }
+
+  /* Data Tables */
+  .data-table {
+    @apply w-full text-left border-collapse;
+  }
+  .data-table th {
+    @apply px-6 py-4 text-xs font-semibold text-brand-slate uppercase tracking-wider border-b border-brand-light bg-brand-soft-white/50;
+  }
+  .data-table td {
+    @apply px-6 py-4 text-sm text-brand-dark-navy border-b border-brand-light/50 transition-colors;
+  }
+  .data-table tbody tr:hover td {
+    @apply bg-brand-teal/5;
+  }
+
+  /* Forms */
+  .form-label {
+    @apply block text-sm font-medium text-brand-slate mb-1.5;
+  }
+  .form-input {
+    @apply w-full px-4 py-2.5 rounded-xl border border-brand-light bg-white text-brand-dark-navy 
+           placeholder:text-brand-slate/50 transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal;
+  }
+  .form-select {
+    @apply form-input appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%20stroke%3D%22%236B7280%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.5em_1.5em] bg-[right_0.5rem_center] bg-no-repeat pr-10;
+  }
+}
+
+/* Custom Scrollbar for immersive feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-brand-slate/30 rounded-full hover:bg-brand-slate/50 transition-colors;
+}
+
+/* Utility to hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -1,0 +1,379 @@
+{
+  "name": "FIXED Complaint Auto-Classification Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE [dbo].[Fact_Complaint]\nSET\n  WorkflowStatus   = NULL,\n  WorkflowCategory = NULL,\n  WorkflowSeverity = NULL\nWHERE WorkflowStatus IN ('Processing', 'Classified', 'Failed')\n   OR (WorkflowStatus IS NOT NULL AND WorkflowCategory IS NULL)",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        -1344,
+        416
+      ],
+      "id": "94b25f6a-891f-4b8a-ad58-7f6f8e16a0e6",
+      "name": "Clear Workflow Columns",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTGbsKTb07lvplX0",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE [dbo].[Fact_Complaint]\nSET WorkflowStatus = 'Processing'\nOUTPUT\n  INSERTED.ComplaintKey,\n  INSERTED.ComplaintID,\n  INSERTED.Description,\n  INSERTED.TripID,\n  INSERTED.RiderKey,\n  INSERTED.DriverKey,\n  INSERTED.SeverityLevel,\n  INSERTED.ComplaintCategory\nWHERE Status = 'Open'\n  AND (WorkflowStatus IS NULL OR WorkflowStatus = 'Failed')\n  AND Description IS NOT NULL",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        416
+      ],
+      "id": "51371f4d-115b-4dc7-acd8-32101dff26a6",
+      "name": "Fetch Open Complaints",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTGbsKTb07lvplX0",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classify this ride-hailing complaint. Return ONLY a raw JSON object — no markdown, no explanation, no extra text whatsoever.\n\nComplaint:\n{{ $json.Description }}\n\nReturn exactly this structure:\n{\"category\":\"Safety\",\"severity\":\"Critical\",\"reason\":\"one sentence\",\"escalate\":true}\n\nRules:\n- category must be one of: Safety, Driver Behavior, Payment, App Issue, Trip Quality, Other\n- severity must be one of: Critical, High, Medium, Low\n- escalate must be JSON boolean true or false — NOT the string \"true\" or \"false\"\n- If complaint involves physical danger, assault, harassment or accident: Safety + Critical + escalate true",
+        "options": {
+          "systemMessage": "You are a complaint classifier for a ride-hailing app in Egypt called Ridelytics. Complaints may be in Arabic or English. You must return ONLY a raw JSON object with no markdown fences, no explanation, no preamble. The escalate field must be a real JSON boolean (true or false), never a string."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -688,
+        432
+      ],
+      "id": "d7e2b518-6dc9-4dcf-bd18-db4bbab7bd3c",
+      "name": "Classify with Mistral"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Pull the agent output ─────────────────────────────────────────────────\nconst responseText = $input.first().json.output ?? '';\n\nconst VALID_CATEGORIES = ['Safety','Driver Behavior','Payment','App Issue','Trip Quality','Other'];\nconst VALID_SEVERITIES  = ['Critical','High','Medium','Low'];\n\nlet parsed;\ntry {\n  // Strip markdown fences if model adds them despite instructions\n  let clean = responseText\n    .replace(/```json/gi, '')\n    .replace(/```/g, '')\n    .trim();\n\n  // Extract the first JSON object found\n  const jsonMatch = clean.match(/\\{[\\s\\S]*\\}/);\n  if (!jsonMatch) throw new Error('No JSON object found in response');\n  clean = jsonMatch[0];\n\n  parsed = JSON.parse(clean);\n\n  // ── Validate & sanitize each field ──────────────────────────────────────\n  // category\n  if (!VALID_CATEGORIES.includes(parsed.category)) {\n    parsed.category = 'Other';\n  }\n  // severity\n  if (!VALID_SEVERITIES.includes(parsed.severity)) {\n    parsed.severity = 'Low';\n  }\n  // escalate — force to real boolean regardless of what model returned\n  if (typeof parsed.escalate === 'string') {\n    parsed.escalate = parsed.escalate.toLowerCase() === 'true';\n  } else if (typeof parsed.escalate !== 'boolean') {\n    parsed.escalate = false;\n  }\n  // reason — sanitize single quotes for SQL safety, cap length\n  if (typeof parsed.reason === 'string') {\n    parsed.reason = parsed.reason.replace(/'/g, \"''\").substring(0, 500);\n  } else {\n    parsed.reason = 'No reason provided';\n  }\n\n  parsed.classificationFailed = false;\n\n} catch(e) {\n  parsed = {\n    category:             'Other',\n    severity:             'Low',\n    reason:               'Auto-classification failed — manual review needed',\n    escalate:             false,\n    classificationFailed: true,\n    errorMessage:         e.message\n  };\n}\n\n// ── Attach complaint identifiers from the loop ───────────────────────────\nconst loopItem = $('Loop Over Items1').first().json;\nparsed.complaintKey = loopItem.ComplaintKey;\nparsed.complaintID  = loopItem.ComplaintID;\nparsed.description  = loopItem.Description;\n\nreturn [{ json: parsed }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        432
+      ],
+      "id": "405dd4bb-496b-4cd8-a532-dd2689cc5ca3",
+      "name": "Parse & Validate JSON"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE [dbo].[Fact_Complaint]\nSET\n  WorkflowCategory = '{{ $json.category.replace(/'/g, \"''\") }}',\n  WorkflowSeverity = '{{ $json.severity }}',\n  WorkflowStatus   = '{{ $json.classificationFailed ? \"Failed\" : \"Classified\" }}'\nWHERE ComplaintKey = {{ $json.complaintKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        432
+      ],
+      "id": "4529d266-bc36-4fb2-99de-aceb70ac986f",
+      "name": "Write Classification to DB",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTGbsKTb07lvplX0",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "check-critical",
+              "leftValue": "={{ $('Parse & Validate JSON').item.json.severity }}",
+              "rightValue": "Critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "check-escalate",
+              "leftValue": "={{ $('Parse & Validate JSON').item.json.escalate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -32,
+        432
+      ],
+      "id": "f8cad486-8581-4ae7-9276-1423303ebac3",
+      "name": "Needs Escalation?"
+    },
+    {
+      "parameters": {
+        "sendTo": "ammarsleem321@gmail.com, manarhossam269@gmail.com, tasnimelagamy65@gmail.com, ibrahimahmed1029@gmail.com, salmaeltahan184@gmail.com",
+        "subject": "=🚨 CRITICAL Complaint #{{ $('Parse & Validate JSON').item.json.complaintID }} — Immediate Action Required",
+        "message": "=<!DOCTYPE html>\n<html>\n<body style=\"margin:0; padding:0; background:#E6F4F6; font-family:Arial,sans-serif;\">\n<div style=\"max-width:600px; margin:0 auto; background:#F4F8FA; border-radius:12px; overflow:hidden; border:1px solid #0A7C8C;\">\n\n  <div style=\"background:#0D3B4E; padding:24px 32px;\">\n    <div style=\"background:#0A7C8C; border-radius:8px; padding:8px 14px; display:inline-block;\">\n      <span style=\"color:#F4F8FA; font-size:18px; font-weight:700; letter-spacing:1px;\">RIDELYTICS</span>\n    </div>\n    <div style=\"color:#20B2BF; font-size:11px; letter-spacing:2px; margin-top:8px;\">COMPLAINT MANAGEMENT SYSTEM</div>\n  </div>\n\n  <div style=\"background:#0A7C8C; padding:16px 32px;\">\n    <span style=\"background:#F4F8FA; color:#0D3B4E; font-size:11px; font-weight:700; padding:4px 10px; border-radius:4px;\">CRITICAL ALERT</span>\n    <span style=\"color:#F4F8FA; font-size:14px; margin-left:12px;\">Immediate action required</span>\n  </div>\n\n  <div style=\"padding:32px;\">\n    <p style=\"color:#0D3B4E; font-size:15px; margin:0 0 8px;\">Dear Compliance Officer,</p>\n    <p style=\"color:#6B7280; font-size:14px; margin:0 0 24px; line-height:1.6;\">The Ridelytics AI system has detected a <strong style=\"color:#0D3B4E;\">Critical severity</strong> complaint requiring your immediate attention.</p>\n\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:24px;\">\n      <tr>\n        <td width=\"33%\" style=\"background:#0D3B4E; border-radius:8px; padding:14px; text-align:center;\">\n          <div style=\"color:#20B2BF; font-size:11px; letter-spacing:1px;\">COMPLAINT ID</div>\n          <div style=\"color:#F4F8FA; font-size:18px; font-weight:700;\">{{ $('Parse & Validate JSON').item.json.complaintID }}</div>\n        </td>\n        <td width=\"2%\"></td>\n        <td width=\"33%\" style=\"background:#0A7C8C; border-radius:8px; padding:14px; text-align:center;\">\n          <div style=\"color:#E6F4F6; font-size:11px; letter-spacing:1px;\">CATEGORY</div>\n          <div style=\"color:#F4F8FA; font-size:18px; font-weight:700;\">{{ $('Parse & Validate JSON').item.json.category }}</div>\n        </td>\n        <td width=\"2%\"></td>\n        <td width=\"30%\" style=\"background:#20B2BF; border-radius:8px; padding:14px; text-align:center;\">\n          <div style=\"color:#0D3B4E; font-size:11px; letter-spacing:1px;\">SEVERITY</div>\n          <div style=\"color:#0D3B4E; font-size:18px; font-weight:700;\">{{ $('Parse & Validate JSON').item.json.severity }}</div>\n        </td>\n      </tr>\n    </table>\n\n    <div style=\"margin-bottom:20px;\">\n      <div style=\"color:#0D3B4E; font-size:12px; font-weight:700; letter-spacing:1px; margin-bottom:8px;\">COMPLAINT DESCRIPTION</div>\n      <div style=\"background:#F4F8FA; border-left:4px solid #0A7C8C; border-radius:0 8px 8px 0; padding:16px; color:#374151; font-size:14px; line-height:1.7;\">\n        {{ $('Parse & Validate JSON').item.json.description }}\n      </div>\n    </div>\n\n    <div style=\"margin-bottom:24px;\">\n      <div style=\"color:#0D3B4E; font-size:12px; font-weight:700; letter-spacing:1px; margin-bottom:8px;\">AI ESCALATION REASON</div>\n      <div style=\"background:#E6F4F6; border:1px solid #0A7C8C; border-radius:8px; padding:16px; color:#0D3B4E; font-size:14px; line-height:1.7;\">\n        {{ $('Parse & Validate JSON').item.json.reason }}\n      </div>\n    </div>\n\n    <hr style=\"border:none; border-top:1px solid #6B7280; opacity:0.3; margin-bottom:20px;\">\n    <p style=\"color:#6B7280; font-size:12px; text-align:center; margin:0; line-height:1.6;\">\n      Auto-generated by Ridelytics AI Complaint Classification System.<br>\n      Log into the dashboard to take action.\n    </p>\n  </div>\n\n  <div style=\"background:#0D3B4E; padding:16px 32px;\">\n    <span style=\"color:#20B2BF; font-size:12px;\">Ridelytics &copy; 2026</span>\n    <span style=\"color:#6B7280; font-size:12px; float:right;\">Smart Transportation BI System</span>\n  </div>\n</div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        416
+      ],
+      "id": "523717df-6651-4db7-ad95-f998b6a62205",
+      "name": "Send Critical Alert Email",
+      "webhookId": "5b8e2328-c981-4b67-abb9-416098bad8de",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zblELL9zrW2zbLlF",
+          "name": "Gmail OAuth2 API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst errorMsg = item.error?.message ?? 'Unknown Gmail error';\nconsole.log(`[Ridelytics] Gmail failed for ComplaintID ${item.complaintID}: ${errorMsg}`);\nreturn [{ json: item }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        192
+      ],
+      "id": "398096df-0fc2-4429-823c-0c6871e3c479",
+      "name": "Log Email Error"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -912,
+        416
+      ],
+      "id": "c30a036f-5277-4d0f-abdd-a81ef70bf8e1",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "model": "mistral-small-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        656
+      ],
+      "id": "dd103b12-ceb8-4610-b635-2e0b4edfe82a",
+      "name": "Mistral Cloud Chat Model1",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "FSSs494STZ93JXsC",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1568,
+        416
+      ],
+      "id": "680d89a4-1a4a-4a2a-8e5d-5218ff639530",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Clear Workflow Columns": {
+      "main": [
+        [
+          {
+            "node": "Fetch Open Complaints",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Open Complaints": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify with Mistral": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate JSON": {
+      "main": [
+        [
+          {
+            "node": "Write Classification to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Classification to DB": {
+      "main": [
+        [
+          {
+            "node": "Needs Escalation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Escalation?": {
+      "main": [
+        [
+          {
+            "node": "Send Critical Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Critical Alert Email": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Email Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Email Error": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Classify with Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify with Mistral",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Clear Workflow Columns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7e460205-c898-4268-8db6-67f093b63a7d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "238b270db563e0aaca00e1be599cc2a778eaaa904d9aab2d8161b614c418a3f4"
+  },
+  "id": "l6uC8bv7QupdUnC2",
+  "tags": []
+}

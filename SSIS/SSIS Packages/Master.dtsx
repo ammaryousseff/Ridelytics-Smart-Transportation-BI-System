@@ -1,0 +1,334 @@
+﻿<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/7/2026 9:23:29 PM"
+  DTS:CreationName="Microsoft.Package"
+  DTS:CreatorComputerName="AMMAR"
+  DTS:CreatorName="AMMAR\ammar"
+  DTS:DTSID="{33824FEE-AE2A-466B-BF3A-26946684AA03}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:LastModifiedProductVersion="17.0.1010.2"
+  DTS:LocaleID="1033"
+  DTS:ObjectName="Package1"
+  DTS:PackageType="5"
+  DTS:VersionBuild="21"
+  DTS:VersionGUID="{CCA0E233-04F0-407E-B89F-5BB41A72E07C}">
+  <DTS:Property
+    DTS:Name="PackageFormatVersion">8</DTS:Property>
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[ridelytics.database.windows.net.RidelyticsDWH.ride]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{FB702B8E-6231-4673-92BB-5F79ABF56BA8}"
+      DTS:ObjectName="ridelytics.database.windows.net.RidelyticsDWH.ride">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectRetryCount="1"
+          DTS:ConnectRetryInterval="5"
+          DTS:ConnectionString="Data Source=ridelytics.database.windows.net;User ID=ride;Initial Catalog=RidelyticsDWH;Provider=SQLOLEDB.1;Persist Security Info=True;Application Name=SSIS-Package1-{FB702B8E-6231-4673-92BB-5F79ABF56BA8}ridelytics.database.windows.net.RidelyticsDWH.ride;Auto Translate=False;">
+          <DTS:Password
+            DTS:Name="Password"
+            Sensitive="1"
+            Encrypted="1">AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAA0siJtAI5w0ytyMspJZ1+cQAAAAAIAAAARABUAFMAAAAQZgAAAAEAACAAAAB+eXFMCN93m/MjcKLh4txE0wrT+IG5cI4YN8as4VC3OgAAAAAOgAAAAAIAACAAAADKzVdwVq6ZM6FAWwJB/EK6L64zZBKRmbBubmK7bbSR2SAAAABKRLVOVRAVElGLzt56KMVhqgGcHtpjc0AZN60+Kx846kAAAABlWTcjx62ycqdycsFl/ufkEcd3rewL1yUbJg5P/zebfAIWX8wB+qK1DA9b6lOmhcZdPD6a00e8Md/xlRO/58fe</DTS:Password>
+        </DTS:ConnectionManager>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  <DTS:Variables />
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\Delete &amp; Reset All Tables"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:Description="Execute SQL Task"
+      DTS:DTSID="{3426D21F-08C0-49C8-9B72-BDEFB58B58A0}"
+      DTS:ExecutableType="Microsoft.ExecuteSQLTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Delete &amp; Reset All Tables"
+      DTS:TaskContact="Execute SQL Task; Microsoft Corporation; SQL Server 2025; © 2025 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
+      DTS:ThreadHint="0">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          SQLTask:Connection="{FB702B8E-6231-4673-92BB-5F79ABF56BA8}"
+          SQLTask:SqlStatementSource="-- ============================================================&#xA;-- RIDELYTICS DWH — SAFE CLEANUP BEFORE SSIS LOAD&#xA;-- ============================================================&#xA;USE RidelyticsDWH;&#xA;GO&#xA;-- ============================================================&#xA;-- PHASE 1: Disable all FK constraints&#xA;-- ============================================================&#xA;ALTER TABLE Fact_Trip           NOCHECK CONSTRAINT ALL;&#xA;ALTER TABLE Fact_DriverEarnings NOCHECK CONSTRAINT ALL;&#xA;ALTER TABLE Fact_Complaint      NOCHECK CONSTRAINT ALL;&#xA;ALTER TABLE Fact_Rating         NOCHECK CONSTRAINT ALL;&#xA;GO&#xA;-- ============================================================&#xA;-- PHASE 2: DELETE all rows&#xA;-- NOTE: Dim_Date and Dim_Time are intentionally SKIPPED&#xA;--       Dim_Date  → DateKey is manual YYYYMMDD, populated once&#xA;--       Dim_Time  → TimeKey is manual HHMMSS,   populated once&#xA;-- ============================================================&#xA;-- Facts first&#xA;DELETE FROM Fact_Rating;&#xA;DELETE FROM Fact_Complaint;&#xA;DELETE FROM Fact_DriverEarnings;&#xA;DELETE FROM Fact_Trip;&#xA;-- Dims (Date &amp; Time deliberately excluded)&#xA;DELETE FROM Dim_SurgeRule;&#xA;DELETE FROM Dim_SeasonalPattern;&#xA;DELETE FROM Dim_Promotion;&#xA;DELETE FROM Dim_Payment;&#xA;DELETE FROM Dim_Driver;&#xA;DELETE FROM Dim_Rider;&#xA;DELETE FROM Dim_Zone;&#xA;GO&#xA;-- ============================================================&#xA;-- PHASE 3: Reseed IDENTITY columns&#xA;-- NOTE: Dim_Date skipped → DateKey is not IDENTITY (YYYYMMDD)&#xA;--       Dim_Time skipped → TimeKey is not IDENTITY (HHMMSS)&#xA;-- ============================================================&#xA;DBCC CHECKIDENT ('Fact_Trip',           RESEED, 0);&#xA;DBCC CHECKIDENT ('Fact_DriverEarnings', RESEED, 0);&#xA;DBCC CHECKIDENT ('Fact_Complaint',      RESEED, 0);&#xA;DBCC CHECKIDENT ('Fact_Rating',         RESEED, 0);&#xA;DBCC CHECKIDENT ('Dim_Zone',            RESEED, 0);&#xA;DBCC CHECKIDENT ('Dim_Rider',           RESEED, 0);&#xA;DBCC CHECKIDENT ('Dim_Driver',          RESEED, 0);&#xA;DBCC CHECKIDENT ('Dim_Payment',         RESEED, 0);&#xA;DBCC CHECKIDENT ('Dim_Promotion',       RESEED, 0);&#xA;DBCC CHECKIDENT ('Dim_SeasonalPattern', RESEED, 0);&#xA;DBCC CHECKIDENT ('Dim_SurgeRule',       RESEED, 0);&#xA;GO&#xA;-- ============================================================&#xA;-- PHASE 4: Re-enable all FK constraints&#xA;-- ============================================================&#xA;ALTER TABLE Fact_Trip           WITH CHECK CHECK CONSTRAINT ALL;&#xA;ALTER TABLE Fact_DriverEarnings WITH CHECK CHECK CONSTRAINT ALL;&#xA;ALTER TABLE Fact_Complaint      WITH CHECK CHECK CONSTRAINT ALL;&#xA;ALTER TABLE Fact_Rating         WITH CHECK CHECK CONSTRAINT ALL;&#xA;GO" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+    <DTS:Executable
+      DTS:refId="Package\Load Dimensions"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:Description="Execute Package Task"
+      DTS:DTSID="{1141EEDB-A7E2-4589-B151-304A94F01C82}"
+      DTS:ExecutableType="Microsoft.ExecutePackageTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Load Dimensions"
+      DTS:TaskContact="Microsoft Corporation; Microsoft SQL Server; Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <ExecutePackageTask>
+          <UseProjectReference>True</UseProjectReference>
+          <PackageName>Load Dimensions.dtsx</PackageName>
+        </ExecutePackageTask>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    <DTS:Executable
+      DTS:refId="Package\Load Fact Complaint"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:Description="Execute Package Task"
+      DTS:DTSID="{22F9FE49-F868-4AF1-8EA6-C58C11F90096}"
+      DTS:ExecutableType="Microsoft.ExecutePackageTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Load Fact Complaint"
+      DTS:TaskContact="Microsoft Corporation; Microsoft SQL Server; Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <ExecutePackageTask>
+          <UseProjectReference>True</UseProjectReference>
+          <PackageName>Load_FactComplaint.dtsx</PackageName>
+        </ExecutePackageTask>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    <DTS:Executable
+      DTS:refId="Package\Load Fact DriverEarnings"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:Description="Execute Package Task"
+      DTS:DTSID="{1E848919-D799-4CBE-83F3-33B8A3A87905}"
+      DTS:ExecutableType="Microsoft.ExecutePackageTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Load Fact DriverEarnings"
+      DTS:TaskContact="Microsoft Corporation; Microsoft SQL Server; Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <ExecutePackageTask>
+          <UseProjectReference>True</UseProjectReference>
+          <PackageName>Load_FactDriverEarnings.dtsx</PackageName>
+        </ExecutePackageTask>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    <DTS:Executable
+      DTS:refId="Package\Load Fact Rating"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:Description="Execute Package Task"
+      DTS:DTSID="{39D4C9B9-20A7-49A6-8215-74038DDE3773}"
+      DTS:ExecutableType="Microsoft.ExecutePackageTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Load Fact Rating"
+      DTS:TaskContact="Microsoft Corporation; Microsoft SQL Server; Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <ExecutePackageTask>
+          <UseProjectReference>True</UseProjectReference>
+          <PackageName>Load_FactRating.dtsx</PackageName>
+        </ExecutePackageTask>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    <DTS:Executable
+      DTS:refId="Package\Load Fact Trip"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:Description="Execute Package Task"
+      DTS:DTSID="{51204DC3-7071-476C-8A2E-822799A22534}"
+      DTS:ExecutableType="Microsoft.ExecutePackageTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Load Fact Trip"
+      DTS:TaskContact="Microsoft Corporation; Microsoft SQL Server; Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <ExecutePackageTask>
+          <UseProjectReference>True</UseProjectReference>
+          <PackageName>Load_FactTrip.dtsx</PackageName>
+        </ExecutePackageTask>
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[Constraint]"
+      DTS:CreationName=""
+      DTS:DTSID="{B289B44F-14C6-42A9-BEBB-51606BFA6239}"
+      DTS:From="Package\Delete &amp; Reset All Tables"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="Constraint"
+      DTS:To="Package\Load Dimensions" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[Constraint 1]"
+      DTS:CreationName=""
+      DTS:DTSID="{81A5C502-298B-4F17-B6B2-F2EFBD375C8B}"
+      DTS:From="Package\Load Dimensions"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="Constraint 1"
+      DTS:To="Package\Load Fact Trip" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[Constraint 2]"
+      DTS:CreationName=""
+      DTS:DTSID="{675E0B2E-5262-4EA6-B7B5-6B7F8B7EFE5E}"
+      DTS:From="Package\Load Fact Trip"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="Constraint 2"
+      DTS:To="Package\Load Fact Complaint" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[Constraint 3]"
+      DTS:CreationName=""
+      DTS:DTSID="{2B5C0DA9-97FB-492F-8769-F54CE250F7D4}"
+      DTS:From="Package\Load Fact Complaint"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="Constraint 3"
+      DTS:To="Package\Load Fact DriverEarnings" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[Constraint 4]"
+      DTS:CreationName=""
+      DTS:DTSID="{0E2F794B-6B71-4A3B-8CC0-DF99E1B4254D}"
+      DTS:From="Package\Load Fact DriverEarnings"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="Constraint 4"
+      DTS:To="Package\Load Fact Rating" />
+  </DTS:PrecedenceConstraints>
+  <DTS:DesignTimeProperties><![CDATA[<?xml version="1.0"?>
+<!--This CDATA section contains the layout information of the package. The section includes information such as (x,y) coordinates, width, and height.-->
+<!--If you manually edit this section and make a mistake, you can delete it. -->
+<!--The package will still be able to load normally but the previous layout information will be lost and the designer will automatically re-arrange the elements on the design surface.-->
+<Objects
+  Version="8">
+  <!--Each node below will contain properties that do not affect runtime behavior.-->
+  <Package
+    design-time-name="Package">
+    <LayoutInfo>
+      <GraphLayout
+        Capacity="16" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph" xmlns:mssgle="clr-namespace:Microsoft.SqlServer.Graph.LayoutEngine;assembly=Microsoft.SqlServer.Graph" xmlns:assembly="http://schemas.microsoft.com/winfx/2006/xaml">
+        <NodeLayout
+          Size="198,42"
+          Id="Package\Delete &amp; Reset All Tables"
+          TopLeft="545,67" />
+        <NodeLayout
+          Size="159,42"
+          Id="Package\Load Dimensions"
+          TopLeft="568,134" />
+        <NodeLayout
+          Size="174,42"
+          Id="Package\Load Fact Complaint"
+          TopLeft="566.214286567301,267.676470386477" />
+        <NodeLayout
+          Size="197,42"
+          Id="Package\Load Fact DriverEarnings"
+          TopLeft="558.785715071826,338.147058725666" />
+        <NodeLayout
+          Size="158,42"
+          Id="Package\Load Fact Rating"
+          TopLeft="575.642857913764,412.147058816827" />
+        <NodeLayout
+          Size="146,42"
+          Id="Package\Load Fact Trip"
+          TopLeft="577,200" />
+        <EdgeLayout
+          Id="Package.PrecedenceConstraints[Constraint]"
+          TopLeft="645.75,109">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,25"
+              Start="0,0"
+              End="0,17.5">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,17.5" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
+          Id="Package.PrecedenceConstraints[Constraint 1]"
+          TopLeft="648.75,176">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,24"
+              Start="0,0"
+              End="0,16.5">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,16.5" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
+          Id="Package.PrecedenceConstraints[Constraint 2]"
+          TopLeft="651.60714328365,242">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,25.676470386477"
+              Start="0,0"
+              End="0,18.176470386477">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,18.176470386477" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
+          Id="Package.PrecedenceConstraints[Constraint 3]"
+          TopLeft="655.250000819563,309.676470386477">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,28.470588339189"
+              Start="0,0"
+              End="0,20.970588339189">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,20.970588339189" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
+          Id="Package.PrecedenceConstraints[Constraint 4]"
+          TopLeft="655.964286492795,380.147058725666">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,32.000000091161"
+              Start="0,0"
+              End="0,24.500000091161">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,24.500000091161" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+      </GraphLayout>
+    </LayoutInfo>
+  </Package>
+</Objects>]]></DTS:DesignTimeProperties>
+</DTS:Executable>

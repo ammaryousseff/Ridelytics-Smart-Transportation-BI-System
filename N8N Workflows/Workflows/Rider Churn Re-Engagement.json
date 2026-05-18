@@ -1,0 +1,139 @@
+{
+  "name": "Rider Churn Re-Engagement",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "={{ $('SQL Fetch Data').item.json.Email }}",
+        "subject": "Special gift for you from Ridelytics !",
+        "message": "=<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body {\n    font-family: Arial, sans-serif;\n    background: #E6F4F6;\n    padding: 20px;\n    direction: ltr;\n    margin: 0;\n  }\n  .container {\n    max-width: 600px;\n    margin: auto;\n    background: #F4F8FA;\n    border-radius: 12px;\n    padding: 30px;\n    box-shadow: 0 4px 6px rgba(0,0,0,0.05);\n    border: 1px solid #6B7280;\n  }\n  .header {\n    background: #0D3B4E;\n    color: #F4F8FA;\n    padding: 20px 24px;\n    border-radius: 10px;\n    text-align: center;\n    margin-bottom: 24px;\n  }\n  .header h1 { margin: 0 0 6px 0; font-size: 24px; }\n  .header p { margin: 0; color: #A8D5DC; font-size: 15px; }\n  .section { margin-bottom: 18px; }\n  .section p { color: #0D3B4E; margin: 0 0 8px 0; font-size: 14px; line-height: 1.6; }\n  .stats-row {\n    display: flex;\n    gap: 12px;\n    margin: 20px 0;\n  }\n  .stat-card {\n    flex: 1;\n    background: #E6F4F6;\n    border-radius: 8px;\n    padding: 14px 16px;\n    border: 1px solid #B8D4DA;\n    text-align: center;\n  }\n  .stat-label {\n    font-size: 11px;\n    color: #6B7280;\n    text-transform: uppercase;\n    letter-spacing: 0.6px;\n    margin-bottom: 4px;\n  }\n  .stat-value {\n    font-size: 22px;\n    font-weight: bold;\n    color: #0D3B4E;\n  }\n  .stat-unit { font-size: 13px; font-weight: normal; color: #6B7280; }\n  .promo {\n    background: #E6F4F6;\n    padding: 20px;\n    margin: 20px 0;\n    border-radius: 10px;\n    text-align: center;\n    border: 2px dashed #0A7C8C;\n  }\n  .promo p { margin: 0 0 6px 0; font-weight: bold; color: #0D3B4E; font-size: 14px; }\n  .code {\n    font-size: 30px;\n    font-weight: bold;\n    color: #20B2BF;\n    margin: 10px 0;\n    letter-spacing: 2px;\n  }\n  .promo-sub { color: #6B7280!important; font-size: 13px!important; font-weight: normal!important; }\n  .footer {\n    text-align: center;\n    margin-top: 24px;\n    padding-top: 18px;\n    border-top: 1px solid #C8D8DE;\n  }\n  .footer p { color: #6B7280; font-size: 12px; margin: 4px 0; }\n  .cta {\n    display: inline-block;\n    margin: 16px 0 8px;\n    background: #0A7C8C;\n    color: #F4F8FA;\n    padding: 12px 28px;\n    border-radius: 8px;\n    font-weight: bold;\n    font-size: 14px;\n    text-decoration: none;\n  }\n</style>\n</head>\n<body>\n<div class=\"container\">\n\n  <!-- HEADER -->\n  <div class=\"header\">\n    <h1>Ridelytics</h1>\n    <p>We miss you, {{ $('SQL Fetch Data').item.json.FirstName }}!</p>\n  </div>\n\n  <!-- GREETING -->\n  <div class=\"section\">\n    <p>Hello <strong>{{ $('SQL Fetch Data').item.json.FirstName }} {{ $('SQL Fetch Data').item.json.LastName }}</strong>,</p>\n    <p>It has been a while since your last ride with us, and we noticed you haven't been around lately. As one of our valued passengers, we'd love to welcome you back with an exclusive offer just for you.</p>\n  </div>\n\n  <!-- STATS -->\n  <div class=\"stats-row\">\n    <div class=\"stat-card\">\n      <div class=\"stat-label\">Days Since Last Ride</div>\n      <div class=\"stat-value\">{{ $('SQL Fetch Data').item.json.DaysSinceLastTrip }} <span class=\"stat-unit\">days</span></div>\n    </div>\n    <div class=\"stat-card\">\n      <div class=\"stat-label\">Total Trips</div>\n      <div class=\"stat-value\">{{ $('SQL Fetch Data').item.json.TotalTrips }} <span class=\"stat-unit\">trips</span></div>\n    </div>\n    <div class=\"stat-card\">\n      <div class=\"stat-label\">Total Spend</div>\n      <div class=\"stat-value\">{{ $('SQL Fetch Data').item.json.TotalSpend }} <span class=\"stat-unit\">EGP</span></div>\n    </div>\n  </div>\n\n  <!-- PROMO -->\n  <div class=\"promo\">\n    <p>Your Exclusive Promo Code</p>\n    <div class=\"code\">{{ $('SQL Fetch Data').item.json.PromoCode }}</div>\n    <p>Get <strong>15% OFF</strong> your next ride</p>\n    <p class=\"promo-sub\">Valid for 14 days from the date of this email &nbsp;·&nbsp; Single use only</p>\n  </div>\n\n  <!-- FOOTER -->\n  <div class=\"footer\">\n    <p>This offer was sent to <strong>{{ $('SQL Fetch Data').item.json.Email }}</strong></p>\n    <p style=\"margin-top:10px;\">© 2025 Ridelytics · Egypt · All rights reserved</p>\n    <p>If you did not request this email, please ignore it.</p>\n  </div>\n\n</div>\n</body>\n</html>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        80
+      ],
+      "id": "c3c64a57-0d31-4311-b926-09c68421a539",
+      "name": "Send a message",
+      "webhookId": "92a184fa-66cd-4cf9-a880-63a3e7887a07",
+      "executeOnce": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zblELL9zrW2zbLlF",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -192,
+        80
+      ],
+      "id": "e5d67b77-666b-4b17-9f1e-52255e81e8a0",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    r.RiderID,\n    r.FirstName,\n    r.LastName,\n    r.Email,\n    r.PhoneNumber,\n\n    COUNT(ft.TripID) AS TotalTrips,\n\n    SUM(ft.FinalFare) AS TotalSpend,\n\n    DATEDIFF(\n        DAY,\n        MAX(dd.FullDate),\n        GETDATE()\n    ) AS DaysSinceLastTrip,\n\n    r.HomeZoneID,\n\n    'RE'\n    + CAST(r.RiderID AS NVARCHAR(10))\n    + UPPER(\n        SUBSTRING(\n            CONVERT(NVARCHAR(36), NEWID()),\n            1,\n            4\n        )\n    ) AS PromoCode\n\nFROM dbo.Dim_Rider r\n\nJOIN dbo.Fact_Trip ft\n    ON r.RiderKey = ft.RiderKey\n\nJOIN dbo.Dim_Date dd\n    ON ft.RequestDateKey = dd.DateKey\n\nGROUP BY\n    r.RiderID,\n    r.FirstName,\n    r.LastName,\n    r.Email,\n    r.PhoneNumber,\n    r.HomeZoneID\n\nHAVING\n    DATEDIFF(\n        DAY,\n        MAX(dd.FullDate),\n        GETDATE()\n    ) BETWEEN 30 AND 60",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        80
+      ],
+      "id": "bf438f16-4344-464a-9184-f55bdc162d95",
+      "name": "SQL Fetch Data",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTGbsKTb07lvplX0",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO dbo.Dim_Promotion_Automation\n(\n    PromoCode,\n    Campaign,\n    DiscountPercentage,\n    MaxUsageCount,\n    StartDate,\n    EndDate,\n    Status\n)\nVALUES\n(\n    '{{ $json.PromoCode }}',\n    'Churn Re-Engagement Auto',\n    15,\n    1,\n    CAST(GETDATE() AS DATE),\n    CAST(DATEADD(DAY, 14, GETDATE()) AS DATE),\n    'Active'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        80
+      ],
+      "id": "e458f7c2-fc7c-49e4-aecd-6dd9cce3973c",
+      "name": "SQL Insert Data",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTGbsKTb07lvplX0",
+          "name": "Microsoft SQL account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "SQL Fetch Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SQL Fetch Data": {
+      "main": [
+        [
+          {
+            "node": "SQL Insert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SQL Insert Data": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "08fc2cff-2a30-412b-8018-8a871a85e599",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "238b270db563e0aaca00e1be599cc2a778eaaa904d9aab2d8161b614c418a3f4"
+  },
+  "id": "Vlk1ixhUxk5u1Cte",
+  "tags": []
+}

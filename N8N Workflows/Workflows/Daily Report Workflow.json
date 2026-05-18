@@ -1,0 +1,201 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e50d5435-db4b-43f9-beed-55bb9a5aca9e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH LatestTripDate AS (\n  SELECT MAX(RequestDateKey) AS MaxKey\n  FROM Fact_Trip\n)\nSELECT\n  COUNT(t.TripID)                      AS TotalTrips,\n  SUM(t.FinalFare)                     AS TotalRevenue,\n  AVG(t.FinalFare)                     AS AvgFare,\n  AVG(t.DurationMinutes)               AS AvgDurationMins,\n  AVG(t.DistanceKM)                    AS AvgDistanceKM,\n  SUM(CAST(t.IsCancelled AS INT))      AS Cancellations,\n  COUNT(r.RatingID)                    AS RatingsGiven,\n  AVG(r.RatingValue)                   AS AvgRating,\n  COUNT(c.ComplaintID)                 AS Complaints,\n  AVG(e.NetEarning)                    AS AvgDriverNetEarning,\n  SUM(e.GrossEarning)                  AS TotalGrossEarning,\n  MAX(t.RequestDateKey)                AS ReportDateKey\nFROM Fact_Trip t\nLEFT JOIN Fact_Rating r\n  ON t.TripID = r.TripID\nLEFT JOIN Fact_Complaint c\n  ON t.TripID = c.TripID\nLEFT JOIN Fact_DriverEarnings e\n  ON t.TripID = e.TripID\nWHERE t.RequestDateKey = (SELECT MaxKey FROM LatestTripDate)",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f1506110-54b4-4ab4-b9c1-dfbfc1173225",
+      "name": "Microsoft SQL",
+      "credentials": {
+        "microsoftSql": {
+          "id": "72NupPxD5fwmo5Sb",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst cancellationRate = data.TotalTrips > 0 \n  ? (data.Cancellations / data.TotalTrips) * 100 \n  : 0;\n\nconst metrics = {\n  totalTrips: data.TotalTrips,\n  totalRevenue: data.TotalRevenue?.toFixed(2),\n  avgFare: data.AvgFare?.toFixed(2),\n  avgDurationMins: data.AvgDurationMins?.toFixed(1),\n  avgDistanceKM: data.AvgDistanceKM?.toFixed(1),\n  cancellations: data.Cancellations,\n  cancellationRate: cancellationRate.toFixed(1),\n  ratingsGiven: data.RatingsGiven,\n  avgRating: data.AvgRating?.toFixed(2),\n  complaints: data.Complaints,\n  avgDriverNetEarning: data.AvgDriverNetEarning?.toFixed(2),\n  totalGrossEarning: data.TotalGrossEarning?.toFixed(2),\n  reportDateKey: data.ReportDateKey,\n  flags: {\n    lowRating: data.AvgRating < 4.0,\n    highCancellation: cancellationRate > 10,\n    highComplaints: data.Complaints > 20\n  }\n};\n\nreturn [{ json: metrics }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "86e5aac2-e389-42d5-8a0d-fbd6a1a72b66",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a BI analyst for Ridelytics, a ride-hailing platform.\n\nHere are the latest performance metrics:\n- Total trips: {{ $('Code in JavaScript').item.json.totalTrips }}\n- Total revenue: EGP {{ $('Code in JavaScript').item.json.totalRevenue }}\n- Average fare: EGP {{ $('Code in JavaScript').item.json.avgFare }}\n- Average trip duration: {{ $('Code in JavaScript').item.json.avgDurationMins }} mins\n- Average distance: {{ $('Code in JavaScript').item.json.avgDistanceKM }} km\n- Cancellations: {{ $('Code in JavaScript').item.json.cancellations }} ({{ $('Code in JavaScript').item.json.cancellationRate }}% rate)\n- Ratings given: {{ $('Code in JavaScript').item.json.ratingsGiven }}\n- Average rating: {{ $('Code in JavaScript').item.json.avgRating }} / 5\n- Complaints: {{ $('Code in JavaScript').item.json.complaints }}\n- Average driver net earning: EGP {{ $('Code in JavaScript').item.json.avgDriverNetEarning }}\n- Total gross earning: EGP {{ $('Code in JavaScript').item.json.totalGrossEarning }}\n\nThresholds:\n- Average rating must stay above 4.0 → breached: {{ $('Code in JavaScript').item.json.flags.lowRating }}\n- Cancellation rate must stay below 10% → breached: {{ $('Code in JavaScript').item.json.flags.highCancellation }}\n- Complaints must stay below 20 → breached: {{ $('Code in JavaScript').item.json.flags.highComplaints }}\n\nWrite a 4-5 sentence executive summary. Lead with the most important insight. Flag any breached threshold clearly. Use plain language, no jargon.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "17a8628a-b54a-4099-98ee-35e65135b684",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        496,
+        208
+      ],
+      "id": "da9f4ba6-33a6-4733-8444-db99ccea2479",
+      "name": "Mistral Cloud Chat Model",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "o29PQ8qcnuBffK3h",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "tasnimelagamy65@gmail.com,ammarsleem321@gmail.com,manarhossam269@gmail.com,salmaeltahan184@gmail.com,Ibrahimahmed1029@gmail.com",
+        "subject": "=Ridelytics Daily BI Report — {{ $now.format('dd/MM/yyyy') }}",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }\n    .container { max-width: 650px; margin: 30px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }\n    .header { background-color: #1a1a2e; padding: 30px; text-align: center; }\n    .header h1 { color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 1px; }\n    .header p { color: #a0a0c0; margin: 6px 0 0; font-size: 14px; }\n    .summary-box { background-color: #f0f4ff; border-left: 5px solid #4a6cf7; margin: 30px; padding: 20px; border-radius: 8px; }\n    .summary-box p { color: #2d2d2d; font-size: 15px; line-height: 1.8; margin: 0; }\n    .metrics-title { font-size: 16px; font-weight: bold; color: #1a1a2e; margin: 0 30px 15px; }\n    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0 30px 30px; }\n    .metric-card { background-color: #f9f9f9; border-radius: 10px; padding: 16px; border: 1px solid #e8e8e8; }\n    .metric-card .label { font-size: 12px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }\n    .metric-card .value { font-size: 22px; font-weight: bold; color: #1a1a2e; }\n    .metric-card.alert { border-left: 4px solid #e74c3c; background-color: #fff5f5; }\n    .metric-card.good { border-left: 4px solid #2ecc71; }\n    .flag-box { background-color: #fff3cd; border-left: 5px solid #f39c12; margin: 0 30px 30px; padding: 16px; border-radius: 8px; }\n    .flag-box p { margin: 0; font-size: 14px; color: #7d5a00; }\n    .flag-box ul { margin: 8px 0 0; padding-left: 18px; color: #7d5a00; font-size: 14px; }\n    .footer { background-color: #f4f4f4; text-align: center; padding: 20px; font-size: 12px; color: #aaa; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n\n    <!-- Header -->\n    <div class=\"header\">\n      <h1>Ridelytics BI Report</h1>\n      <p>{{ $now.format(' MMMM D') }} &nbsp;|&nbsp; Auto-generated Daily Summary</p>\n    </div>\n\n    <!-- AI Summary -->\n    <div style=\"padding: 30px 30px 10px;\">\n      <p style=\"font-size:13px; color:#888; text-transform:uppercase; letter-spacing:1px; margin:0 0 10px;\">Executive Summary</p>\n    </div>\n    <div class=\"summary-box\">\n      <p>{{ $('Code in JavaScript1').item.json.cleanSummary }}</p>\n\n    <!-- Metrics -->\n    <p class=\"metrics-title\">Key Metrics at a Glance</p>\n    <div class=\"metrics-grid\">\n\n      <div class=\"metric-card good\">\n        <div class=\"label\">Total Trips</div>\n        <div class=\"value\">{{ $('Code in JavaScript').item.json.totalTrips }}</div>\n      </div>\n\n      <div class=\"metric-card good\">\n        <div class=\"label\">Total Revenue</div>\n        <div class=\"value\">EGP {{ $('Code in JavaScript').item.json.totalRevenue }}</div>\n      </div>\n\n      <div class=\"metric-card\">\n        <div class=\"label\">Average Fare</div>\n        <div class=\"value\">EGP {{ $('Code in JavaScript').item.json.avgFare }}</div>\n      </div>\n\n      <div class=\"metric-card\">\n        <div class=\"label\">Average Rating</div>\n        <div class=\"value\">{{ $('Code in JavaScript').item.json.avgRating }} / 5</div>\n      </div>\n\n      <div class=\"metric-card alert\">\n        <div class=\"label\">Cancellation Rate</div>\n        <div class=\"value\">{{ $('Code in JavaScript').item.json.cancellationRate }}%</div>\n      </div>\n\n      <div class=\"metric-card\">\n        <div class=\"label\">Complaints</div>\n        <div class=\"value\">{{ $('Code in JavaScript').item.json.complaints }}</div>\n      </div>\n\n      <div class=\"metric-card\">\n        <div class=\"label\">Avg Driver Earning</div>\n        <div class=\"value\">EGP {{ $('Code in JavaScript').item.json.avgDriverNetEarning }}</div>\n      </div>\n\n      <div class=\"metric-card\">\n        <div class=\"label\">Avg Trip Duration</div>\n        <div class=\"value\">{{ $('Code in JavaScript').item.json.avgDurationMins }} min</div>\n      </div>\n\n    </div>\n\n    <!-- Flags -->\n    <div class=\"flag-box\">\n      <p><strong>Threshold Alerts</strong></p>\n      <ul>\n        <li>Low Rating (below 4.0): {{ $('Code in JavaScript').item.json.flags.lowRating == true ? 'BREACHED' : 'OK' }}</li>\n        <li>High Cancellation (above 10%): {{ $('Code in JavaScript').item.json.flags.highCancellation == true ? 'BREACHED' : 'OK' }}</li>\n        <li>High Complaints (above 20): {{ $('Code in JavaScript').item.json.flags.highComplaints == true ? 'BREACHED' : 'OK' }}</li>\n      </ul>\n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      This report was auto-generated by Ridelytics BI Narrator &nbsp;|&nbsp; Powered by n8n + Mistral AI\n    </div>\n\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "ff37fadf-a7e4-4d81-b185-71e5dbbcd753",
+      "name": "Send a message",
+      "webhookId": "d7caf212-0375-4bf9-867b-750712523ffb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tlmtEhivkk2PoHqI",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutput = $('AI Agent').item.json.output;\n\nconst cleanOutput = rawOutput\n  .replace(/\\*\\*Executive Summary[:\\*]*/gi, '')\n  .replace(/\\*\\*/g, '')\n  .replace(/\\*/g, '')\n  .trim();\n\nreturn [{ json: { cleanSummary: cleanOutput } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "0885e4ec-4b49-4dc6-b1d0-dcb3092a9b43",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Microsoft SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft SQL": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d36727f6-1dca-4853-ab8d-8a68556fc41a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "083932ea9fc228ca885c31375c70310fc4183932051b7b67d286c77223eab3b4"
+  },
+  "id": "GuA4zixUikc4TNNq",
+  "tags": []
+}
