@@ -1,6 +1,6 @@
 <div align="center">
 
-<div style="display:inline-block; padding:14px 18px; background:#0D3B4E; border-radius:16px;">
+<div>
   <img src="Logo & Theme\ridelytics logo resized.png" alt="Ridelytics" width="200" style="filter: brightness(0) invert(1);" />
 </div>
 
@@ -65,7 +65,7 @@ Ridelytics is a full-stack transportation BI solution that starts from an OLTP d
 | OLTP | SQL Server 2025 + Stored Procedures |
 | Data Generation | Python + Pandas |
 | ETL | SSIS (Dimensions with SCD + Facts with Lookups) |
-| DWH Modeling | Star / Galaxy schema |
+| DWH Modeling | Galaxy schema |
 | Cube | SSAS |
 | Reporting | SSRS |
 | Dashboards | Power BI |
@@ -134,7 +134,7 @@ OLTP  ──►  Data Gen  ──►  SSIS ETL  ──►  DWH (Galaxy)  ──�
 **Highlights**
 
 <p align="center">
-  <img src="SSIS/Screenshots/Load%20Dim%20Driver%20with%20SCD.png" alt="Load Dim Zone with SCD" width="900" />
+  <img src="SSIS/Screenshots/Load%20Dim%20Driver%20with%20SCD.png" alt="Load Dim Driver with SCD" width="900" />
 </p>
 
 <p align="center">
@@ -309,7 +309,7 @@ OLTP  ──►  Data Gen  ──►  SSIS ETL  ──►  DWH (Galaxy)  ──�
 
 ---
 
-### 12 · Website Screenshots
+### 12 · Website
 
 <p align="center">
   <img src="Website/Website%20Screenshots/Landing%20Page.gif" alt="Website Landing (GIF)" width="900" />
@@ -347,11 +347,7 @@ OLTP  ──►  Data Gen  ──►  SSIS ETL  ──►  DWH (Galaxy)  ──�
 
 <sub>MEET THE TEAM</sub>
 
-## ⚔️ The Code Warriors ⚔️
-
-<sub>Built with a BI engineering mindset — from OLTP to insights</sub>
-
-<br/>
+## 🚀 The BI Strike Team 🚀
 
 <table>
   <tr>
