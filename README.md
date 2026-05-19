@@ -148,30 +148,39 @@ OLTP  ──►  Data Gen  ──►  SSIS ETL  ──►  DWH (Galaxy)  ──�
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Dim%20Zone%20With%20SCD.png" alt="Load Dim Zone with SCD" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Dim%20Rider%20With%20SCD.png" alt="Load Dim Rider with SCD" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Dim%20Payment%20With%20SCD.png" alt="Load Dim Payment with SCD" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Dim%20Promotion%20With%20SCD.png" alt="Load Dim Promotion with SCD" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Dim%20SeasonalPattern%20With%20SCD.png" alt="Load Dim SeasonalPattern with SCD" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Dim%20SurgeRule%20With%20SCD.png" alt="Load Dim SurgeRule with SCD" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Fact%20DriverEarnings.png" alt="Load Fact Driver Earnings" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Fact%20Complaint.png" alt="Load Fact Complaint" width="900" />
   </p>
+
   <p align="center">
     <img src="SSIS/Screenshots/Load%20Fact%20Rating.png" alt="Load Fact Rating" width="900" />
   </p>
+  
 </details>
 
 ---
