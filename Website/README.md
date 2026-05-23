@@ -1,4 +1,4 @@
-# 🚗 Ridelytics — Smart Transportation Business Intelligence System
+# Ridelytics Smart Transportation Business Intelligence System
 
 A modern, production-ready full-stack web application for transportation business intelligence.
 
@@ -8,7 +8,7 @@ A modern, production-ready full-stack web application for transportation busines
 |-------|-----------|------|
 | Frontend | Next.js 15 + React 19 + Tailwind CSS v3 | 3001 |
 | Backend API | Express.js + mssql | 3000 |
-| Database | SQL Server 2025 (Windows Auth) | 1433 |
+| Database | SQL Server 2025 | 1433 |
 
 ## Prerequisites
 
@@ -23,10 +23,10 @@ A modern, production-ready full-stack web application for transportation busines
 Run the SQL schema in your SQL Server:
 ```sql
 -- In SSMS or Azure Data Studio:
--- CREATE DATABASE RidelyticsOLTP;
--- GO
--- USE RidelyticsOLTP;
--- GO
+CREATE DATABASE RidelyticsOLTP;
+GO
+USE RidelyticsOLTP;
+GO
 -- Then execute: Queries/OLTP Creating Tables.sql
 -- Then execute: Queries/Stored_Procedures.sql
 ```
@@ -113,7 +113,3 @@ N8N_CHAT_WEBHOOK_URL=http://localhost:5678/webhook/your-chat-workflow
 - **Database:** SQL Server 2025 with stored procedures
 - **Auth:** JWT-based with bcrypt password hashing
 - **Design:** Glassmorphism, animations, responsive SaaS dashboard
-
-## License
-
-Built for ITI BI Track Graduation Project © 2026

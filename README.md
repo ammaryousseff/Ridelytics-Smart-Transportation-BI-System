@@ -49,7 +49,7 @@ Ridelytics is a full-stack transportation BI solution that starts from an OLTP d
 |---|---|---|
 | 🗄️ | **Database Schema + Stored Procedures** | SQL scripts to create the transactional model and stored procedures |
 | 🐍 | **Data Generation** | Python generator + SQL insert script for realistic sample data |
-| 🏗️ | **DWH & Galaxy Schema** | Warehouse design diagrams and a backup |
+| 🏗️ | **DWH (Galaxy Schema)** | Warehouse design diagrams and a backup |
 | 🔄 | **ETL (SSIS)** | Packages to load dimensions/facts and orchestrate the pipeline |
 | 🧊 | **Cube (SSAS)** | Dimensions and cube project assets |
 | 📊 | **Consumption** | SSRS reports + Power BI dashboard screenshots |
@@ -78,7 +78,7 @@ Ridelytics is a full-stack transportation BI solution that starts from an OLTP d
 
 ```
 OLTP  ──►  Data Gen  ──►  SSIS ETL  ──►  DWH (Galaxy)  ──►  SSAS Cube  ──►  Power BI / SSRS
-           (Python)        (SCD +          (Star/Fact                         (21 Dashboards
+           (Python)        (SCD +          (Dim/Fact                         (21 Dashboards
                            Lookups)         Tables)                            + Reports)
                                                                     │
                                                                     ▼
@@ -351,35 +351,35 @@ OLTP  ──►  Data Gen  ──►  SSIS ETL  ──►  DWH (Galaxy)  ──�
 <table>
   <tr>
     <td align="center" width="160">
-      <img src="https://ui-avatars.com/api/?name=Ammar+Youssef&background=534AB7&color=fff&size=64&bold=true&rounded=true" width="52" height="52" style="border-radius:50%"/><br/>
+      <img src="assets/team/Ammar.png" width="110" height="110" style="border-radius:50%; object-fit:cover"/><br/>
       <b>Ammar Youssef</b><br/>
       <sub>BI Dev &amp; Data Analyst</sub><br/><br/>
       <a href="https://github.com/ammaryousseff"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white"/></a>
       <a href="https://www.linkedin.com/in/ammaryoussef/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white"/></a>
     </td>
     <td align="center" width="160">
-      <img src="https://ui-avatars.com/api/?name=Ibrahim+Kamal&background=0F6E56&color=fff&size=64&bold=true&rounded=true" width="52" height="52" style="border-radius:50%"/><br/>
+      <img src="assets/team/Ibrahim.jpg" width="110" height="110" style="border-radius:50%; object-fit:cover"/><br/>
       <b>Ibrahim Kamal</b><br/>
       <sub>BI Dev &amp; Data Analyst</sub><br/><br/>
       <a href="https://github.com/ibrahimahmed1029"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white"/></a>
       <a href="https://www.linkedin.com/in/ibrahim-ahmed-kamal/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white"/></a>
     </td>
     <td align="center" width="160">
-      <img src="https://ui-avatars.com/api/?name=Manar+Hossam&background=993C1D&color=fff&size=64&bold=true&rounded=true" width="52" height="52" style="border-radius:50%"/><br/>
+      <img src="assets/team/Manar.jpg" width="110" height="110" style="border-radius:50%; object-fit:cover"/><br/>
       <b>Manar Hossam</b><br/>
       <sub>BI Dev &amp; Data Analyst</sub><br/><br/>
       <a href="https://github.com/ManarHossamMohamed"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white"/></a>
       <a href="https://www.linkedin.com/in/manarhossam2/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white"/></a>
     </td>
     <td align="center" width="160">
-      <img src="https://ui-avatars.com/api/?name=Salma+ElTahhan&background=993556&color=fff&size=64&bold=true&rounded=true" width="52" height="52" style="border-radius:50%"/><br/>
+      <img src="assets/team/Salma.jpg" width="110" height="110" style="border-radius:50%; object-fit:cover"/><br/>
       <b>Salma ElTahhan</b><br/>
       <sub>BI Dev &amp; Data Analyst</sub><br/><br/>
       <a href="https://github.com/SalmaElTahhan"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white"/></a>
       <a href="https://www.linkedin.com/in/salma-eltahhan/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white"/></a>
     </td>
     <td align="center" width="160">
-      <img src="https://ui-avatars.com/api/?name=Tasneem+Elagamy&background=185FA5&color=fff&size=64&bold=true&rounded=true" width="52" height="52" style="border-radius:50%"/><br/>
+      <img src="assets/team/Tasneem.jpg" width="110" height="110" style="border-radius:50%; object-fit:cover"/><br/>
       <b>Tasneem Elagamy</b><br/>
       <sub>BI Dev &amp; Data Analyst</sub><br/><br/>
       <a href="https://github.com/tasnimelagamy"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white"/></a>
